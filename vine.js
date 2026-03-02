@@ -1,3 +1,8 @@
+// Bot to use to passively farm vines.
+
+// Feel free to change the key to manually stop the bot.
+const abortKey = "tab"
+
 // Set this to true if you want the bot to do "/afk" at the start and at the end.
 const markYourselfAsAFK = true
 
@@ -12,9 +17,6 @@ const endCoords = [-3585, -3317]
 
 // Put here the number of floors your farm has.
 const numberOfFloors = 2
-
-// Feel free to change the key to manually stop the bot.
-const abortKey = "tab"
 
 // Will try to refill on shears if you don't have this many on you.
 // Might want to make it higher if your farm is longer and/or has more floors.
@@ -91,6 +93,7 @@ const ticklistener_1 = JsMacros.on("Disconnect", JavaWrapper.methodToJava(e => {
     Chat.log("[VineBot] Reconnected, we're all good now")
     p = Player.getPlayer()
     isDisconnected = false
+    DISCONNECTED = false
     Client.waitTick(10)
     mainLoop()
 }))
