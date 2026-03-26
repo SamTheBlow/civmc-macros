@@ -49,17 +49,10 @@ mainSlot = 36
 // This counts how long you're taking to recalibrate Z position
 recalibrateTimer = 0
 
-isDisconnected = false
-
 // This makes you automatically log back in when you get disconnected
 const ticklistener_1 = JsMacros.on("Disconnect", JavaWrapper.methodToJava(e => {
-    // Prevent weird things from happening...
-    if (isDisconnected) {
-        return
-    }
-    
     Chat.log("[VineBot] Disconnected!")
-    isDisconnected = true
+
     if (disconnectWhenDone && botMode == "terminate")
     {
         return
@@ -76,10 +69,6 @@ const ticklistener_1 = JsMacros.on("Disconnect", JavaWrapper.methodToJava(e => {
     }
     while (!World.isWorldLoaded()) {
         Time.sleep(3000)
-        // Prevent weird things from happening...
-        if (!isDisconnected) {
-            return
-        }
         Chat.log("[VineBot] Connecting...")
         Client.connect("play.civmc.net")
         Chat.log("[VineBot] Tried to connect, let's see if the world loads...")
@@ -92,8 +81,6 @@ const ticklistener_1 = JsMacros.on("Disconnect", JavaWrapper.methodToJava(e => {
     }
     Chat.log("[VineBot] Reconnected, we're all good now")
     p = Player.getPlayer()
-    isDisconnected = false
-    DISCONNECTED = false
     Client.waitTick(10)
     mainLoop()
 }))
