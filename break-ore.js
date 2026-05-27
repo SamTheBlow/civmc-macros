@@ -7,6 +7,9 @@
 // Feel free to change the key to manually stop the bot.
 const abortKey = "tab"
 
+// "pickaxe" = break ores with pickaxe, "axe" = break melons into slices with axe
+const mode = "pickaxe"
+
 
 // Don't touch anything below
 
@@ -28,6 +31,10 @@ function main() {
 }
 
 function grabOre() {
+    if (mode == "axe") {
+        return grabItem(["minecraft:melon"], "melon")
+    }
+    
     return grabItem(
         [
             "minecraft:deepslate_copper_ore",
@@ -49,6 +56,10 @@ function placeOre() {
 }
 
 function grabPick() {
+    if (mode == "axe") {
+        return grabItem(["minecraft:diamond_axe"], "axe")
+    }
+    
     return grabItem(["minecraft:diamond_pickaxe"], "pickaxe")
 }
 
@@ -56,7 +67,12 @@ function breakOre() {
     p.lookAt(0,60)
     Client.waitTick()
     KeyBind.keyBind("key.attack", true)
-    Client.waitTick(12)
+    if (mode == "axe"){
+        Client.waitTick()
+    }
+    else {
+        Client.waitTick(12)
+    }
     KeyBind.keyBind("key.attack", false)
     Client.waitTick()
     return true

@@ -1,0 +1,1 @@
+Chat.say("/dest icenia")

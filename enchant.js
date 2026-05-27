@@ -216,8 +216,8 @@ function eatEmeralds() {
     if (terminateReason != "") { return }
 
     p.lookAt(0, 90)
-    Client.waitTick(lagTick)
-    for (let i = 0; i < 16; i++) {
+    Client.waitTick()
+    for (let i = 0; i < 15; i++) {
         checkAbort()
         if (terminateReason != "") { return }
 
@@ -232,6 +232,36 @@ function eatEmeralds() {
             return
         }
     }
+
+    // Turn the last emerald into enchant bottles
+    inv = Player.openInventory()
+    inv.openGui()
+    inv.click(36)
+    Client.waitTick()
+    inv.click(1,1)
+    Client.waitTick()
+    inv.click(36)
+    Client.waitTick()
+    inv.quick(0)
+    Client.waitTick()
+    inv.close()
+    Client.waitTick()
+
+    // Now eat enchant bottles until we reach level 30
+    grabEnchantBottles()
+    bottlesUsed = 0
+    while (p.getXPLevel() < 30 && bottlesUsed < 5) {
+        checkAbort()
+        if (terminateReason != "") { return }
+
+        if (inv.getSlot(36).isEmpty()) {
+            grabEnchantBottles()
+            if (terminateReason != "") { return }
+        }
+        p.interact()
+        Client.waitTick(lagTick)
+        bottlesUsed++;
+    }
 }
 
 function grabEmeralds() {
@@ -239,6 +269,17 @@ function grabEmeralds() {
     list = inv.findItem("minecraft:emerald")
     if (list.length == 0) {
         terminateReason = "could not find emeralds in your inventory."
+        return
+    }
+    inv.swapHotbar(list[0], 0)
+    Client.waitTick(lagTick)
+}
+
+function grabEnchantBottles() {
+    inv = Player.openInventory()
+    list = inv.findItem("minecraft:experience_bottle")
+    if (list.length == 0) {
+        terminateReason = "could not find enchant bottles in your inventory."
         return
     }
     inv.swapHotbar(list[0], 0)

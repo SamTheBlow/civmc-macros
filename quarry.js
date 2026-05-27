@@ -414,20 +414,26 @@ function mineOne(x, z) {
     if (digMode == "east") {
         // Center the player on the Z axis
         if (Math.abs(p.getZ() - (z + 0.5)) > RECENTER_MARGIN) {
-            walkTo(p.getX(), z);
+            walkTo(p.getX(), z)
         }
 
-        p.lookAt(180 * dir, 30);
-        Client.waitTick(5);
-        KeyBind.keyBind("key.attack", true);
-        Client.waitTick(3);
-        KeyBind.keyBind("key.attack", false);
-        Client.waitTick();
+        p.lookAt(180 * dir, 12)
+        KeyBind.keyBind("key.sneak", true)
+        Client.waitTick()
+        KeyBind.keyBind("key.attack", true)
+        Client.waitTick()
+        KeyBind.keyBind("key.attack", false)
+        Client.waitTick()
+        KeyBind.keyBind("key.attack", true)
+        Client.waitTick()
+        KeyBind.keyBind("key.attack", false)
+        KeyBind.keyBind("key.sneak", false)
+        Client.waitTick()
 
         // Walk one block forward
-        walkTo(p.getX() + 1, p.getZ());
+        walkTo(p.getX() + 1, p.getZ())
 
-        isDigging = false;
+        isDigging = false
     }
     else if (digMode == "newrow") {
         // Center the player on the row
@@ -534,10 +540,11 @@ function unstuck(x, z) {
     } else {
         // A block is in the way
         lookAtBlock(x, p.getY(), z);
-        Client.waitTick();
-        KeyBind.keyBind("key.attack", true);
-        Time.sleep(40);
-        KeyBind.keyBind("key.attack", false);
+        Client.waitTick(5)
+        KeyBind.keyBind("key.attack", true)
+        Client.waitTick()
+        KeyBind.keyBind("key.attack", false)
+        Client.waitTick()
     }
     KeyBind.keyBind("key.forward", true);
 }

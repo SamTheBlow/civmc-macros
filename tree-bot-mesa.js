@@ -24,29 +24,26 @@ mainSlot = 1
 // Set this to false if you're not using shears
 const hasShears = true
 
-// Stop the bot if your axe reaches this durability
-const minimumAxeDurability = 10
+// Don't use axes that don't have this much durability
+const minimumAxeDura = 10
 
-// The coordinates where your farm starts and ends
-const minX = -3710
-const maxX = -3644
+// The coordinates where your farm starts and ends (on 1st floor)
+const minX = -4333
+const maxX = -4243
 
-const minZ = -3429
-const maxZ = -3315
+const minZ = -3038
+const maxZ = -2852
 
 // The Z value of the bridge that connects each tree row
-// This bridge should be on the north side of the farm
+// This bridge should be on the south side of the farm
 // (rows are north-south, bridges are east-west)
-const bridgeZ = -3429
+const bridgeZ = -2852
 
 // The number of blocks to get from one tree row to the next
 const distanceBetweenRows = 6
 
 // The y levels at which your farm grows birch instead of oak
-const birch_layers = [108, 116]
-
-// The y levels at which your farm grows cherry instead of oak
-const cherry_layers = [124]
+const birch_layers = []
 
 
 // Don't touch anything below
@@ -58,15 +55,20 @@ const p = Player.getPlayer()
 
 fellY = p.getY() - 0.5
 
-isUsingShears = true
+isChoppingBirch = false
 sapling = "minecraft:oak_sapling"
 
 nextRowX = 0
-botMode = "mainSouth"
+botMode = "main"
+direction = "north"
 mainSlot = mainSlot+35
+currentLayer = 1
 
 // Tracks how long you've been attacking with shears
 shearsTime = 0
+
+Chat.say("/ctb")
+Chat.say("/afk")
 
 main()
 
@@ -75,8 +77,8 @@ function main() {
     centerBot()
     saplingTypeCheck()
 
-    if (p.getX() >= correctedCoord(maxX)) {
-        nextRowX = correctedCoord(maxX)
+    if (p.getX() < getMinX()) {
+        nextRowX = getMinX()
         botMode = "toNextRow"
     }
 
@@ -85,13 +87,13 @@ function main() {
     {
         Client.waitTick()
         
-        if (botMode == "mainSouth") {
+        if (botMode == "main") {
             eatCheck()
 
-            // Run south while using your axe/shears,
+            // Run north while using your axe/shears,
             // until you hit a tree (or the end of the farm)
-            lookAt(0, 0)
-            if (isUsingShears && hasShears && shearsTime < 2) {
+            lookAt(dirAngle(), 0)
+            if (!isChoppingBirch && hasShears && shearsTime < 2) {
                 grabShears()
                 shearsTime++;
             }
@@ -106,23 +108,14 @@ function main() {
 
             if (!isMoving())
             {
-                chopSouth()
+                chop()
                 shearsTime = 0
             }
             checkRowEnd()
         }
-        else if (botMode == "mainNorth") {
-            // Run back to the start
-            lookAt(180, 0)
-            KeyBind.keyBind("key.forward", true)
-            KeyBind.keyBind("key.attack", false)
-            sprint(p.getZ() > minZ + 5)
-
-            checkRowStart()
-        }
         else if (botMode == "toNextRow") {
-            lookAt(90, 0)
-            if (isUsingShears && hasShears && shearsTime < 2) {
+            lookAt(-90, 0)
+            if (!isChoppingBirch && hasShears && shearsTime < 2) {
                 grabShears()
                 shearsTime++;
             }
@@ -138,26 +131,42 @@ function main() {
 
             if (!isMoving())
             {
-                chopWest()
+                chopEast()
             }
 
-            if (p.getX() <= nextRowX) {
+            if (p.getX() >= nextRowX) {
                 KeyBind.keyBind("key.forward", false)
                 centerBot()
-                botMode = "mainSouth"
+                botMode = "main"
                 shearsTime = 0
             }
         }
         else if (botMode == "backToStart") {
             // HARDCODED for Fairhill's tree farm
-            const lodestoneX = maxX + 4
+            const lodestoneX = minX - 4
 
-            lookAt(-90, 0)
+            lookAt(90, 0)
+
+            if (!isMoving())
+            {
+                waitTime = 1
+                if (hasShears) {
+                    grabShears()
+                    waitTime = 1
+                }
+                else {
+                    grabFood()
+                    waitTime = 20
+                }
+                KeyBind.keyBind("key.attack", true)
+                Client.waitTick(waitTime)
+                KeyBind.keyBind("key.attack", false)
+            }
+
             KeyBind.keyBind("key.forward", true)
-            KeyBind.keyBind("key.attack", false)
-            sprint(p.getX() < lodestoneX - 5)
+            sprint(p.getX() > lodestoneX + 5)
 
-            if (p.getX() >= lodestoneX) {
+            if (p.getX() <= lodestoneX + 1) {
                 KeyBind.keyBind("key.forward", false)
 
                 playerY = p.getY()
@@ -173,10 +182,12 @@ function main() {
                     botMode = "terminate"
                 }
 
+                currentLayer++
                 saplingTypeCheck()
                 fellY = p.getY() - 0.5
 
-                nextRowX = correctedCoord(maxX)
+                nextRowX = getMinX()
+
                 botMode = "toNextRow"
                 shearsTime = 0
             }
@@ -199,6 +210,8 @@ function main() {
         botLog("Bot terminated: " + terminateReason)
     }
 
+    Chat.say("/ctb")
+    Chat.say("/afk")
     World.playSound("entity.ghast.scream", 100, 0)
 }
 
@@ -246,15 +259,15 @@ function checkManualAbort() {
     }
 }
 
-// Only works when you're holding a tool
+// Grabs a new axe when current axe is too close to breaking
+// Make sure this is only called when you're holding a tool
 function checkDurability() {
-    if (inv.getSlot(36 + inv.getSelectedHotbarSlotIndex()).getDurability() < minimumAxeDurability) {
-        terminateReason = "Axe is about to break"
-        botMode = "terminate"
+    if (inv.getSlot(36 + inv.getSelectedHotbarSlotIndex()).getDurability() < minimumAxeDura) {
+        grabAxe()
     }
 }
 
-function chopSouth()
+function chop()
 {
     KeyBind.keyBind("key.forward", false)
 
@@ -267,25 +280,34 @@ function chopSouth()
 
     // Chop the log that's on the ground
     KeyBind.keyBind("key.attack", true)
-    lookAt(10, 40)
-    Client.waitTick(8)
-    lookAt(0, 0)
+    lookAt(dirAngle() - 10, 40)
+    Client.waitTick(9)
+    lookAt(dirAngle(), 0)
 
     // Move to where the tree was
     targetFeetZ = Math.floor(p.getZ()) + 0.5
-    feetZGoal = targetFeetZ + 1
+    feetZGoal = targetFeetZ - 1
+    if (direction != "north") {
+        feetZGoal = targetFeetZ + 1
+    }
     attemptwalk = 0
-    while (targetFeetZ < feetZGoal && botMode != "terminate")
+    while (
+        (
+            (direction == "south" && targetFeetZ < feetZGoal)
+            || (direction == "north" && targetFeetZ > feetZGoal)
+        )
+        && botMode != "terminate"
+    )
     {
         KeyBind.keyBind("key.forward", true)
         Time.sleep(5)
         targetFeetZ = Math.floor(p.getZ()) + 0.5
         KeyBind.keyBind("key.forward", false)
         attemptwalk++
-        if (attemptwalk > 600)
+        if (attemptwalk > 50)
         {
-            feetZGoal = targetFeetZ
-            attemptwalk = 0
+            chop()
+            return
         }
         checkFell()
         checkManualAbort()
@@ -297,11 +319,11 @@ function chopSouth()
     }
 
     // Chop wood above you
-    lookAt(0, -90)
+    lookAt(dirAngle(), -90)
     Time.sleep(1800)
 
     // Place a sapling
-    lookAt(0, 90)
+    lookAt(dirAngle(), 90)
     KeyBind.keyBind("key.attack", false)
     grabSapling()
     p.interact()
@@ -311,10 +333,10 @@ function chopSouth()
     p.interact()
     Client.waitTick()
     p.interact()
-    lookAt(0, 0)
+    lookAt(dirAngle(), 0)
 }
 
-function chopWest() {
+function chopEast() {
     KeyBind.keyBind("key.forward", false)
 
     grabAxe()
@@ -325,23 +347,24 @@ function chopWest() {
 
     // Chop the log that's on the ground
     KeyBind.keyBind("key.attack", true)
-    lookAt(100, 40)
+    lookAt(-100, 40)
     Client.waitTick(8)
-    lookAt(90, 0)
+    lookAt(-90, 0)
 
     // Move to where the tree was
     currentX = p.getX()
     attempts = 0
-    while (currentX > nextRowX && botMode != "terminate")
+    while (currentX < nextRowX && botMode != "terminate")
     {
         KeyBind.keyBind("key.forward", true)
         Time.sleep(5)
         currentX = p.getX()
         KeyBind.keyBind("key.forward", false)
         attempts++
-        if (attempts > 400)
+        if (attempts > 50)
         {
-            break
+            chopEast()
+            return
         }
         checkFell()
         checkManualAbort()
@@ -367,7 +390,7 @@ function chopWest() {
     p.interact()
     Client.waitTick()
     p.interact()
-    lookAt(90, 0)
+    lookAt(-90, 0)
     Client.waitTick()
 }
 
@@ -417,10 +440,10 @@ function dropWood() {
     KeyBind.keyBind("key.attack", false)
     KeyBind.keyBind("key.forward", false)
     
-    angle = 130
-    // Edge case: if we're on the westernmost row of the farm, drop items east instead
-    if (p.getX() <= correctedCoord(minX)) {
-        angle = -130
+    angle = -(dirAngle()-130)
+    // Edge case: if we're on the easternmost row of the farm, drop items west instead
+    if (p.getX() >= maxX) {
+        angle = -angle
     }
     lookAt(angle, 45)
     Client.waitTick()
@@ -445,64 +468,52 @@ function dropWood() {
     Client.waitTick()
 }
 
-function checkRowStart() {
-    z = p.getZ()
-    if (z > correctedCoord(minZ))
+function checkRowEnd() {
+    if (direction == "north" && p.getZ() > getMinZ())
+    {
+        return
+    }
+    if (direction == "south" && p.getZ() < getMaxZ())
     {
         return
     }
 
-    // Keep going until we're at the bridge
-    while (z > correctedCoord(bridgeZ))
-    {
-        KeyBind.keyBind("key.forward", true)
-        KeyBind.keyBind("key.sneak", true)
-        Client.waitTick()
-        z = p.getZ()
-    }
+    dropWood()
+    switchDirection()
 
-    centerBot([p.getX(), p.getY(), bridgeZ])
+    centerBot([p.getX(), p.getY(), p.getZ()])
     Client.waitTick()
     // Yup that's right, do it again
-    centerBot([p.getX(), p.getY(), bridgeZ])
+    centerBot([p.getX(), p.getY(), p.getZ()])
+
+    shearsTime = 0
 
     // If we're at the end of the farm, go back to the first row
-    if (p.getX() <= correctedCoord(minX)) {
+    if (p.getX() >= getMaxX()) {
         botMode = "backToStart"
     }
     // otherwise, move across the bridge to get to the next row
     else {
-        nextRowX = Math.sign(p.getX()) * (Math.floor(Math.abs(p.getX())) + distanceBetweenRows)
+        nextRowX = Math.floor(p.getX() + distanceBetweenRows)
         botMode = "toNextRow"
-        shearsTime = 0
     }
-}
-
-function checkRowEnd() {
-    if (p.getZ() < maxZ)
-    {
-        return
-    }
-    dropWood()
-    botMode = "mainNorth"
 }
 
 // Returns true if you're currently moving.
 function isMoving() {
+    const EPSILON = 0.01
     x = p.getX()
     z = p.getZ()
     Client.waitTick(2)
-    return !(x == p.getX() && z == p.getZ())
+    return !(Math.abs(x - p.getX()) < EPSILON && Math.abs(z - p.getZ()) < EPSILON)
 }
 
-// Grabs axe instead if user does not have shears.
 function grabShears() {
     grabItem(["minecraft:shears"], "shears")
 }
 
 function grabAxe() {
-    grabItem(["minecraft:diamond_axe"], "a diamond axe")
-    checkDurability()
+    grabItem(["minecraft:diamond_axe"], "a diamond axe", true)
 }
 
 function grabSapling() {
@@ -517,12 +528,17 @@ function grabFood() {
     grabItem(validItems, "valid food")
 }
 
-function grabItem(validItems, itemDescription) { 
+// Warning: if you enable checkForDurability,
+// make sure you're definitely only checking for tools, otherwise the script may crash
+function grabItem(validItems, itemDescription, checkForDurability = false) { 
     inv = Player.openInventory()
 
     // Search hotbar (slots 36 to 44)
     for (i = 0; i < 9; i++) {
-        if (validItems.includes(inv.getSlot(i + 36).getItemId())) {
+        if (
+            validItems.includes(inv.getSlot(i + 36).getItemId())
+            && (!checkForDurability || inv.getSlot(i + 36).getDurability() >= minimumAxeDura)
+        ) {
             inv.setSelectedHotbarSlotIndex(i)
             return
         }
@@ -530,7 +546,10 @@ function grabItem(validItems, itemDescription) {
 
     // Search rest of inventory (slots 9 to 35)
     for (i = 9; i < 36; i++) {
-        if (validItems.includes(inv.getSlot(i).getItemId())) {
+        if (
+            validItems.includes(inv.getSlot(i).getItemId())
+            && (!checkForDurability || inv.getSlot(i).getDurability() >= minimumAxeDura)
+        ) {
             inv.swap(i, mainSlot)
             inv.setSelectedHotbarSlotIndex(mainSlot-36)
             return
@@ -580,15 +599,55 @@ function correctedCoord(coord) {
 
 function saplingTypeCheck() {
     if (birch_layers.includes(Math.round(p.getY()))) {
-        isUsingShears = false
+        isChoppingBirch = true
         sapling = "minecraft:birch_sapling"
     }
-    else if (cherry_layers.includes(Math.round(p.getY()))) {
-        isUsingShears = false
-        sapling = "minecraft:cherry_sapling"
-    }
     else {
-        isUsingShears = true
+        isChoppingBirch = false
         sapling = "minecraft:oak_sapling"
     }
+}
+
+function switchDirection() {
+    if (direction == "north") {
+        direction = "south"
+    }
+    else {
+        direction = "north"
+    }
+}
+
+function dirAngle() {
+    if (direction == "north") {
+        return 180
+    }
+    return 0
+}
+
+function getMinZ() {
+    if (currentLayer == 3 || currentLayer == 4) {
+        return minZ + 3 + 1
+    }
+    return minZ + 1
+}
+
+function getMaxZ() {
+    if (currentLayer == 3 || currentLayer == 4) {
+        return maxZ - 3
+    }
+    return maxZ
+}
+
+function getMinX() {
+    if (currentLayer == 2 || currentLayer == 4) {
+        return minX + 3
+    }
+    return minX
+}
+
+function getMaxX() {
+    if (currentLayer == 2 || currentLayer == 4) {
+        return maxX - 3
+    }
+    return maxX
 }
