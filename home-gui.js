@@ -1,11 +1,20 @@
 const SCREENWIDTH = Hud.getWindowWidth() / Hud.getScaleFactor();
 const SCREENHEIGHT = Hud.getWindowHeight() / Hud.getScaleFactor();
 
-const DESTS = ["", "! twilight fairhill", "! icenia"];
+const DESTS = [
+  { title: "(Reset)", command: "" },
+  { title: "Fairhill", command: "! twilight fairhill" },
+  { title: "Icenia", command: "! icenia" },
+  { title: "Sarlacc", command: "! cw portal" },
+  { title: "Wholefoods", command: "! wf" },
+];
 const BOTS = [
+  { file: "wheat.js", title: "WheatBot" },
   { file: "turboclick.js", title: "TurboClickBot" },
+  { file: "spidereye.js", title: "SpiderEyeBot" },
   { file: "enchant.js", title: "EnchantBot" },
   { file: "autobottle.js", title: "AutoBottleBot" },
+  { file: "jungle-tree-pomerium.js", title: "PomeriumJungleTreeBot" },
 ];
 const COMMANDS = [
   {
@@ -63,11 +72,11 @@ screen.setOnInit(
       100,
       "/dest",
       DESTS,
-      function (dest) {
-        return dest != "" ? dest : "(Reset)";
+      function (data) {
+        return data["title"];
       },
-      function (dest) {
-        Chat.say(dest != "" ? "/dest " + dest : "/dest");
+      function (data) {
+        Chat.say(data["command"] != "" ? "/dest " + data["command"] : "/dest");
       },
     );
 
@@ -79,12 +88,12 @@ screen.setOnInit(
       100,
       "Bots",
       BOTS,
-      function (botData) {
-        return botData["title"];
+      function (data) {
+        return data["title"];
       },
-      function (botData) {
+      function (data) {
         screen.close();
-        JsMacros.runScript("./" + botData["file"]);
+        JsMacros.runScript("./" + data["file"]);
       },
     );
 

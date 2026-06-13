@@ -1,37 +1,29 @@
-abortKey = "tab"
-terminate = false
-p = Player.getPlayer()
+const util = require("./blow-utils.js");
 
-twoSlotMode = false
-slot = 4
+twoSlotMode = true;
 
-loop()
+const hoeSlot = 4;
+const seedsSlot = 5;
+currentSlot = hoeSlot;
+
+util.setMainLoop(loop);
+util.startMainLoop();
 
 function loop() {
-    while (!terminate) {
-        if (twoSlotMode) {
-            inv = Player.openInventory()
-            inv.setSelectedHotbarSlotIndex(slot)
-            if (slot == 5) {
-                slot = 4
-            }
-            else {
-                slot = 5
-            }
-            p.interact()
-            inv.close()
-        }
-        else {
-            p.interact()
-        }
-        Client.waitTick()
-        checkManualAbort()
-    }
-}
-
-function checkManualAbort() {
-    if (KeyBind.getPressedKeys().contains("key.keyboard." + abortKey)) {
-        Chat.log("[TurboClickBot] Player has pressed abort key. Terminating.")
-        terminate = true
-    }
+  if (!twoSlotMode) {
+    util.player.interact();
+    return;
+  }
+  inv = Player.openInventory();
+  if (currentSlot == seedsSlot) {
+    util.grabItem(["minecraft:wheat_seeds"], "seeds", currentSlot);
+    inv.setSelectedHotbarSlotIndex(currentSlot - 1);
+    currentSlot = hoeSlot;
+  } else {
+    util.grabItem(["minecraft:stone_hoe"], "hoe", currentSlot);
+    inv.setSelectedHotbarSlotIndex(currentSlot - 1);
+    currentSlot = seedsSlot;
+  }
+  util.player.interact();
+  inv.close();
 }

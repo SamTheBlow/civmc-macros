@@ -32,7 +32,7 @@ const BOTTLE = "minecraft:glass_bottle"
 
 p = Player.getPlayer()
 inv = "" // This needs to be a global scope variable
-botMode = "setup"
+botMode = "compact"
 terminateReason = ""
 
 firstTimeSmelting = true
@@ -81,40 +81,47 @@ while (botMode != "terminate") {
         depositAll([BOTTLE], true)
 
         // Take one CS of sand and two stacks of crates
-        csOfSandWithdrawn = 0
-        stacksOfCratesWithdrawn = 0
+        sandSlot = -1
+        crateSlot1 = -1
+        crateSlot2 = -1
         for (i = 0; i <= 53; i++) {
             if (
-                csOfSandWithdrawn == 0
+                sandSlot == -1
                 && SANDS.includes(inv.getSlot(i).getItemId())
                 && inv.getSlot(i).getCount() == 64
                 && inv.getSlot(i).getLore().length > 0
                 && inv.getSlot(i).getLore()[0].getString() == "Compacted Item"
             ) {
-                inv.quick(i)
-                csOfSandWithdrawn++
+                sandSlot = i
             }
             if (
-                stacksOfCratesWithdrawn < 2
+                crateSlot2 == -1
                 && ["minecraft:chest"].includes(inv.getSlot(i).getItemId())
                 && inv.getSlot(i).getCount() == 64
                 && inv.getSlot(i).getLore().length > 0
                 && inv.getSlot(i).getLore()[0].getString() == "Crate"
             ) {
-                inv.quick(i)
-                stacksOfCratesWithdrawn++
+                if (crateSlot1 == -1) {
+                    crateSlot1 = i
+                }
+                else {
+                    crateSlot2 = i
+                }
             }
         }
 
-        if (csOfSandWithdrawn == 0) {
+        if (sandSlot == -1) {
             terminateReason = "there is no sand to turn into bottles"
             botMode = "terminate"
         }
-        else if (stacksOfCratesWithdrawn < 2) {
+        else if (crateSlot2 == -1) {
             terminateReason = "not enough crates in storage chest"
             botMode = "terminate"
         }
         else {
+            inv.quick(sandSlot)
+            inv.quick(crateSlot1)
+            inv.quick(crateSlot2)
             botMode = "decompact"
         }
 
@@ -496,8 +503,16 @@ function openChest(chestCoords) {
     KeyBind.keyBind("key.use", true)
     Client.waitTick()
     KeyBind.keyBind("key.use", false)
-    // Wait for the inventory to open (lag can delay this)
+
+    // Wait for the chest to open (lag can delay this)
     Client.waitTick(lagTicks)
+    inv = Player.openInventory()
+    if (!inv || inv.getTotalSlots() != 90) {
+        inv.close()
+        Client.waitTick()
+        // Try again
+        openChest(chestCoords)
+    }
 }
 
 function punchBlock(blockPos) {
