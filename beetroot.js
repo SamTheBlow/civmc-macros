@@ -37,7 +37,7 @@ const numberOfFloors = 1;
 
 // The y level of the farm's topmost floor
 // (if only one floor, put your farm's y level here)
-const yFloor1 = 88;
+const yFloor1 = 89;
 
 // The number of blocks between each floor
 // (e.g. if floor 1 is at y=67 and floor 2 is at y=64, then it's 3)
