@@ -11,10 +11,10 @@ const util = require("./blow-utils.js");
 // --- THINGS YOU CAN CONFIGURE
 
 // Here you can change the abort key (default is Tab)
-util.setAbortKey("tab");
+util.setAbortKey("key.keyboard.keypad.3");
 
 // Change the bot's name to whatever you'd like
-util.setBotName("WheatBot");
+util.setBotName("BeetrootBot");
 
 util.setAutoReconnect(true);
 util.setDisconnectWhenDone(true);
@@ -22,7 +22,7 @@ util.setGoAfk(true);
 util.setDisableBypass(true);
 
 // The crop you're farming (WHEAT or BEETROOT)
-const crop = WHEAT;
+const crop = BEETROOT;
 
 // The slot in your hotbar the bot will use to eat food
 // (number from 1 to 9)
@@ -33,11 +33,11 @@ const foodSlot = 1;
 const cropSlot = 5;
 
 // The number of floors your farm has
-const numberOfFloors = 10;
+const numberOfFloors = 1;
 
 // The y level of the farm's topmost floor
 // (if only one floor, put your farm's y level here)
-const yFloor1 = 90;
+const yFloor1 = 88;
 
 // The number of blocks between each floor
 // (e.g. if floor 1 is at y=67 and floor 2 is at y=64, then it's 3)
@@ -45,13 +45,13 @@ const yFloor1 = 90;
 const yFloorStep = 3;
 
 // The coordinates where the first and last blocks of farmland are located
-const xMin = -3552;
-const xMax = -3481;
-const zMin = -3432;
-const zMax = -3376;
+const xMin = 4541;
+const xMax = 4639;
+const zMin = 8135;
+const zMax = 8215;
 
 // The x coordinates where the bot will empty its inventory
-const depositCoords = [-3492, -3504, -3516, -3528, -3540, -3552];
+const depositCoords = [4553, 4565, 4577, 4589, 4601, 4613, 4625, 4639];
 
 // --- End of things you can configure
 // Don't touch anything below

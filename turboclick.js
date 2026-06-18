@@ -1,11 +1,11 @@
 const util = require("./blow-utils.js");
 
-twoSlotMode = true;
+twoSlotMode = false;
 
 const hoeSlot = 4;
 const seedsSlot = 5;
-currentSlot = hoeSlot;
 
+util.setBotName("TurboClickBot");
 util.setMainLoop(loop);
 util.startMainLoop();
 
@@ -15,15 +15,10 @@ function loop() {
     return;
   }
   inv = Player.openInventory();
-  if (currentSlot == seedsSlot) {
-    util.grabItem(["minecraft:wheat_seeds"], "seeds", currentSlot);
-    inv.setSelectedHotbarSlotIndex(currentSlot - 1);
-    currentSlot = hoeSlot;
-  } else {
-    util.grabItem(["minecraft:stone_hoe"], "hoe", currentSlot);
-    inv.setSelectedHotbarSlotIndex(currentSlot - 1);
-    currentSlot = seedsSlot;
-  }
+  util.grabItem(["minecraft:wheat_seeds"], "seeds", seedsSlot);
+  inv.swap(35+seedsSlot, 45)
+  util.grabItem(["minecraft:stone_hoe"], "hoe", hoeSlot);
+  inv.setSelectedHotbarSlotIndex(hoeSlot - 1);
   util.player.interact();
   inv.close();
 }

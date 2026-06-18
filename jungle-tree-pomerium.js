@@ -95,7 +95,7 @@ const JUNGLE_SAP = "minecraft:jungle_sapling";
 botMode = "setup";
 direction = "east";
 
-currentFloor = util.getCurrentFloor(yFloor1, yFloorStep, false);
+currentFloor = util.getCurrentFloor(yFloor1, yFloorStep, numberOfFloors, false);
 
 nextRowPos = 0;
 

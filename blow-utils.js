@@ -2,9 +2,11 @@
 
 // Exposed variables go here
 var player = Player.getPlayer();
+var isTerminated = false;
 //
 
 var abortKey = "tab";
+var autoReconnect = false;
 var disconnectWhenDone = false;
 var applyAfk = false;
 var applyBypass = false;
@@ -14,11 +16,77 @@ var mainLoop = function () {};
 
 const ABORT_MANUALLY = "Player has pressed the abort key.";
 
-var isTerminated = false;
 var terminateReason = "";
+
+// This is needed for the auto-reconnect code
+var isDisconnected = false;
+// This prevents afk and bypass from being applied more than once
+var isFirstTimeRunning = true;
+
+// This makes you automatically log back in when you get disconnected
+const ticklistener_1 = JsMacros.on(
+  "Disconnect",
+  JavaWrapper.methodToJava((e) => {
+    if (!autoReconnect) {
+      return;
+    }
+
+    botLog("Disconnected!");
+
+    // Prevent recursive shenanigans
+    if (isDisconnected) {
+      return;
+    }
+
+    isDisconnected = true;
+
+    if (disconnectWhenDone && isTerminated) {
+      return;
+    }
+
+    botLog("Will attempt to log back in...");
+    if (World.isWorldLoaded()) {
+      botLog("The world is already loaded..? Let's wait..?");
+      Time.sleep(3000);
+      if (World.isWorldLoaded()) {
+        botLog("Yeah the world is already loaded. Terminating.");
+        isDisconnected = false;
+        return;
+      }
+    }
+    while (!World.isWorldLoaded()) {
+      if (!isDisconnected) {
+        return;
+      }
+      Time.sleep(3000);
+      botLog("Connecting...");
+      Client.connect("play.civmc.net");
+      botLog("Tried to connect, let's see if the world loads...");
+      Time.sleep(3000);
+      if (World.isWorldLoaded()) {
+        break;
+      }
+      botLog("The world hasn't loaded, let's try again later...");
+      Time.sleep(14000);
+    }
+
+    if (!isDisconnected) {
+      return;
+    }
+    botLog("Reconnected, we're all good now");
+    player = Player.getPlayer();
+    isDisconnected = false;
+    Client.waitTick(10);
+    startMainLoop();
+  }),
+);
 
 function setAbortKey(key) {
   abortKey = key;
+}
+
+function setAutoReconnect(bool) {
+  autoReconnect = bool;
 }
 
 function setDisconnectWhenDone(bool) {
@@ -47,10 +115,16 @@ function startMainLoop() {
     return;
   }
 
-  sayAfk();
-  sayBypass();
+  if (isFirstTimeRunning) {
+    sayAfk();
+    sayBypass();
+    isFirstTimeRunning = false;
+  }
 
   while (!isTerminated) {
+    if (isDisconnected) {
+      return;
+    }
     mainLoop();
     checkManualAbort();
     Client.waitTick();
@@ -205,7 +279,7 @@ function grabItem(
 
 // If isTopToBottom is true, floor 1 is the topmost floor,
 // otherwise floor 1 is the bottommost floor.
-function getCurrentFloor(yFloor1, yFloorStep, isTopToBottom) {
+function getCurrentFloor(yFloor1, yFloorStep, numberOfFloors, isTopToBottom) {
   // Round is important here, e.g. when player is standing on farmland
   playerY = Math.round(player.getY());
   diff = playerY - yFloor1;
@@ -220,7 +294,16 @@ function getCurrentFloor(yFloor1, yFloorStep, isTopToBottom) {
       "player isn't on the farm (player's y value is: " + playerY + ")";
     return 1;
   }
-  return diff / yFloorStep;
+
+  output = 1 + diff / yFloorStep;
+  if (output > numberOfFloors) {
+    isTerminated = true;
+    terminateReason =
+      "player isn't on the farm (player's y value is: " + playerY + ")";
+    return 1;
+  }
+
+  return output;
 }
 
 // Automatically eats when in need
@@ -521,12 +604,23 @@ function isOnBlock(blockX, blockZ) {
   );
 }
 
+// Terminates the bot if the player isn't inside given range
+function checkInsideRange(xMin, xMax, zMin, zMax, message) {
+  playerX = Math.floor(player.getX());
+  playerZ = Math.floor(player.getZ());
+  if (playerX < xMin || playerX > xMax || playerZ < zMin || playerZ > zMax) {
+    isTerminated = true;
+    terminateReason = message;
+  }
+}
+
 module.exports = {
   // exposed variables
   player: player,
   isTerminated: isTerminated,
   // exposed functions
   setAbortKey: setAbortKey,
+  setAutoReconnect: setAutoReconnect,
   setDisconnectWhenDone: setDisconnectWhenDone,
   setGoAfk: setGoAfk,
   setDisableBypass: setDisableBypass,
@@ -553,4 +647,5 @@ module.exports = {
   moveTo: moveTo,
   isMoving: isMoving,
   isOnBlock: isOnBlock,
+  checkInsideRange: checkInsideRange,
 };
