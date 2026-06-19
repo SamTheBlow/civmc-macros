@@ -14,7 +14,7 @@ const BOTS = [
   { file: "spidereye.js", title: "SpiderEyeBot" },
   { file: "enchant.js", title: "EnchantBot" },
   { file: "autobottle.js", title: "AutoBottleBot" },
-  { file: "jungle-tree-pomerium.js", title: "PomeriumJungleTreeBot" },
+  { file: "planter.js", title: "PlanterBot" },
 ];
 const COMMANDS = [
   {

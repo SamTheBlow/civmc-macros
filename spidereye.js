@@ -31,21 +31,21 @@ function mainLoop() {
     util.grabSword(swordSlot, minimumToolDura);
     
     KeyBind.keyBind("key.attack", true);
-    util.lookAt(-19.7, 4.82); // random values to avoid triggering Vulcan kick
+    util.lookAt(-19.7, 24.82); // random values to avoid triggering Vulcan kick
     util.checkManualAbort();
     Client.waitTick(2);
     KeyBind.keyBind("key.attack", false);
     Client.waitTick(4);
     
     KeyBind.keyBind("key.attack", true);
-    util.lookAt(1.2, 4.6);
+    util.lookAt(1.2, 24.6);
     util.checkManualAbort();
     Client.waitTick(2);
     KeyBind.keyBind("key.attack", false);
     Client.waitTick(4);
     
     KeyBind.keyBind("key.attack", true);
-    util.lookAt(20.78, 5.137);
+    util.lookAt(20.78, 25.137);
     util.checkManualAbort();
     Client.waitTick(2);
     KeyBind.keyBind("key.attack", false);

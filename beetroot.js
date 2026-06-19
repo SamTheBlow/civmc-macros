@@ -37,7 +37,7 @@ const numberOfFloors = 1;
 
 // The y level of the farm's topmost floor
 // (if only one floor, put your farm's y level here)
-const yFloor1 = 89;
+const yFloor1 = 88;
 
 // The number of blocks between each floor
 // (e.g. if floor 1 is at y=67 and floor 2 is at y=64, then it's 3)
@@ -51,7 +51,10 @@ const zMin = 8135;
 const zMax = 8215;
 
 // The x coordinates where the bot will empty its inventory
-const depositCoords = [4553, 4565, 4577, 4589, 4601, 4613, 4625, 4639];
+const depositCoords = [
+  4553, 4559, 4565, 4571, 4577, 4583, 4589, 4595, 4601, 4607, 4613, 4619, 4625,
+  4631, 4637, 4639,
+];
 
 // --- End of things you can configure
 // Don't touch anything below
