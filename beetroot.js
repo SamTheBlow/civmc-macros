@@ -11,7 +11,7 @@ const util = require("./blow-utils.js");
 // --- THINGS YOU CAN CONFIGURE
 
 // Here you can change the abort key (default is Tab)
-util.setAbortKey("key.keyboard.keypad.3");
+util.setAbortKey("tab");
 
 // Change the bot's name to whatever you'd like
 util.setBotName("BeetrootBot");
@@ -32,6 +32,12 @@ const foodSlot = 1;
 // (number from 1 to 9)
 const cropSlot = 5;
 
+// If true, when collecting the last items at the end of each floor,
+// the player will sprint jump. If false, it will not jump and only sprint.
+// Only enable this if your farm has a ceiling
+// that prevents the player from jumping high.
+const sprintJumpToCollect = false;
+
 // The number of floors your farm has
 const numberOfFloors = 1;
 
@@ -46,8 +52,8 @@ const yFloorStep = 3;
 
 // The coordinates where the first and last blocks of farmland are located
 const xMin = 4541;
-const xMax = 4639;
-const zMin = 8135;
+const xMax = 4641;
+const zMin = 8133;
 const zMax = 8215;
 
 // The x coordinates where the bot will empty its inventory
@@ -62,7 +68,7 @@ const depositCoords = [
 util.setMainLoop(mainLoop);
 
 // The direction the bot walks in: true is north, false is south
-directionNorth = Math.abs(xMin - Math.floor(util.player.getX())) % 2 == 1;
+directionNorth = Math.abs(xMax - Math.floor(util.player.getX())) % 2 == 0;
 
 currentLayer = util.getCurrentFloor(yFloor1, yFloorStep, numberOfFloors, true);
 
@@ -108,12 +114,12 @@ function mainMode() {
   // Reached the end of a row? Move forward a block and change direction
   if (playerZ == zMax && !directionNorth) {
     KeyBind.keyBind("key.use", true);
-    util.moveTo([], playerX - 1.0 + 0.5, playerZ + 0.5);
+    util.moveTo([], playerX - 1.0 + 0.5, playerZ + 0.5, 0.3);
     directionNorth = true;
   }
   if (playerZ == zMin && directionNorth) {
     KeyBind.keyBind("key.use", true);
-    util.moveTo([], playerX - 1.0 + 0.5, playerZ + 0.5);
+    util.moveTo([], playerX - 1.0 + 0.5, playerZ + 0.5, 0.3);
     directionNorth = false;
   }
 
@@ -218,7 +224,7 @@ function nearEndMode() {
   util.eatCheck(foodSlot);
   KeyBind.keyBind("key.forward", true);
   util.player.lookAt(directionNorth ? 180 : 0, 0);
-  util.sprint(true);
+  util.sprint(sprintJumpToCollect);
 }
 
 // The bot goes back to the start and goes to the next floor (if applicable)

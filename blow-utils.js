@@ -24,7 +24,7 @@ var isDisconnected = false;
 var isFirstTimeRunning = true;
 
 // This makes you automatically log back in when you get disconnected
-const ticklistener_1 = JsMacros.on(
+disconnectListener = JsMacros.on(
   "Disconnect",
   JavaWrapper.methodToJava((e) => {
     if (!autoReconnect) {
@@ -73,11 +73,21 @@ const ticklistener_1 = JsMacros.on(
     if (!isDisconnected) {
       return;
     }
+    Client.waitTick(10);
     botLog("Reconnected, we're all good now");
     player = Player.getPlayer();
     isDisconnected = false;
-    Client.waitTick(10);
     startMainLoop();
+  }),
+);
+
+// This stops the bot when you die.
+// I can't think of any bot that would intentionally make its
+// user die and keep going after.
+deathListener = JsMacros.on(
+  "Death",
+  JavaWrapper.methodToJava(() => {
+    stopBot("you died");
   }),
 );
 
@@ -164,6 +174,9 @@ function terminate(terminatedEarly = false) {
       Client.disconnect();
     }
   }
+
+  JsMacros.disableScriptListeners("Disconnect");
+  JsMacros.disableScriptListeners("Death");
 }
 
 function botLog(message) {
@@ -200,7 +213,7 @@ function grabSword(itemSlot, minimumToolDura) {
   );
 }
 
-function grabAxe(itemSlot, minimumToolDura) {
+function grabAxe(itemSlot, minimumToolDura = 10) {
   grabItem(["minecraft:diamond_axe"], "axe", itemSlot, true, minimumToolDura);
 }
 
@@ -345,6 +358,22 @@ function openChest(chestCoords, attempts = 0) {
   }
 }
 
+// Tries to open the crafting table you are assumedly looking at
+// Returns true if success, otherwise false
+function openCraftingTable() {
+  attempts = 0;
+  while (attempts < 10) {
+    player.interact();
+    Client.waitTick(5);
+    inv = Player.openInventory();
+    if (inv.getType() == "Crafting Table") {
+      return true;
+    }
+  }
+  botLog("Failed to open crafting table");
+  return false;
+}
+
 // validItems is an array with item IDs
 function withdrawAll(validItems, isCompacted, isDoubleChest) {
   inv = Player.openInventory();
@@ -394,7 +423,9 @@ function dropAll(itemsArray) {
   inv = Player.openInventory();
   for (i = 9; i <= 44; i++) {
     if (itemsArray.includes(inv.getSlot(i).getItemId())) {
-      inv.dropSlot(i, true);
+      inv.click(i);
+      Client.waitTick();
+      inv.click(-999);
       Client.waitTick();
     }
   }
@@ -456,7 +487,7 @@ function jump() {
 // Copy/pasted from Greltam's utility code ("WASDToLocation")
 // keyArray is an array of all the keys
 // you want the bot to hold while it's moving
-function moveTo(keyArray, xPos, zPos, tolerance = 0.2) {
+function moveTo(keyArray, xPos, zPos, tolerance = 0.195) {
   //define variables for main loop.
   wKey = false;
   aKey = false;
@@ -492,7 +523,7 @@ function moveTo(keyArray, xPos, zPos, tolerance = 0.2) {
   okCounter = 0;
 
   while (okCounter < 5) {
-    if (isTerminated) {
+    if (isTerminated || isDisconnected) {
       break;
     }
     //Recalculate Normalized Vector direction for each movement key
@@ -614,6 +645,93 @@ function checkInsideRange(xMin, xMax, zMin, zMax, message) {
   }
 }
 
+// ((( COPY/PASTED CODE FROM GRELTAM'S UTILS )))
+// Crafting is borked via misaligned server/client versions
+// Add manual crafting to circumvent recipe based crafting
+// Crafting slots are:
+// 1 2 3       for        1 2        for
+// 4 5 6 = 0 crafting     3 4 = 0   player
+// 7 8 9      tables
+//
+// Example: Nether Brick Slabs
+// [["minecraft:nether_bricks",1],
+//  ["minecraft:nether_bricks",2],
+//  ["minecraft:nether_bricks",3]]
+//
+// Self Craft template
+// [["minecraft:",1],["minecraft:",2],
+//  ["minecraft:",3],["minecraft:",4]]
+// Crafting Table template
+// [["minecraft:",1],["minecraft:",2],["minecraft:",3],
+//  ["minecraft:",4],["minecraft:",5],["minecraft:",6],
+//  ["minecraft:",7],["minecraft:",8],["minecraft:",9]]
+function craftManually(listOfItemsAndSlots, quantity = 999) {
+  inventory = Player.openInventory();
+
+  //check if player is self crafting or table crafting
+  selfCrafting = true;
+  inventoryStart = 9;
+  inventoryEnd = 44;
+
+  if (inventory.getType() == "Survival Inventory") {
+    selfCrafting = true;
+    inventoryStart = 9;
+    inventoryEnd = 44;
+  }
+  if (inventory.getType() == "Crafting Table") {
+    selfCrafting = false;
+    inventoryStart = 10;
+    inventoryEnd = 45;
+  }
+
+  ////Chat.log("type:" + inventory.getType())
+  ////Chat.log("inventory: " + inventoryStart + "-" + inventoryEnd)
+  //go through items in inventory slots and check if they
+  //are in the listOfItemsAndSlots, first [0] spot
+  //then put it in the crafting slot it's supposed to be in
+
+  //iterate over the craftinglist first, for each item look
+  //for it in the inventory, then place in crafting slot
+  for (let lia = 0; lia < listOfItemsAndSlots.length; lia++) {
+    craftInput = listOfItemsAndSlots[lia];
+    ////Chat.log(craftInput[0] + " slot: " + craftInput[1])
+    for (let pi = inventoryStart; pi <= inventoryEnd; pi++) {
+      //swap item into crafting slot if found
+      if (!inventory.getSlot(pi).isEmpty()) {
+        ////Chat.log("slot #:" + pi + " slot item: "
+        ////    + inventory.getSlot(pi).getItemID())
+        if (inventory.getSlot(pi).getItemID() == craftInput[0]) {
+          inventory.swap(pi, craftInput[1]);
+          Client.waitTick(3);
+          break; //found our item, don't look for anymore
+        }
+      }
+    }
+  }
+
+  checkManualAbort();
+  if (isTerminated) {
+    return;
+  }
+
+  //craft the quantity from filled crafting slots.
+  if (quantity == 999) {
+    ////Chat.log("Item at slot 0: " + inventory.getSlot(0).getItemID())
+    inventory.quick(0);
+    Client.waitTick(3);
+  } else {
+    for (let i = 0; i < quantity; i++) {
+      inventory.click(0);
+      Client.waitTick(3);
+    }
+  }
+
+  if (selfCrafting) {
+    inventory.close();
+    Client.waitTick();
+  }
+}
+
 module.exports = {
   // exposed variables
   player: player,
@@ -638,6 +756,7 @@ module.exports = {
   getCurrentFloor: getCurrentFloor,
   eatCheck: eatCheck,
   openChest: openChest,
+  openCraftingTable: openCraftingTable,
   withdrawAll: withdrawAll,
   hasAnyItem: hasAnyItem,
   dropAll: dropAll,
@@ -648,4 +767,5 @@ module.exports = {
   isMoving: isMoving,
   isOnBlock: isOnBlock,
   checkInsideRange: checkInsideRange,
+  craftManually: craftManually,
 };

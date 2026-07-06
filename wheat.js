@@ -32,8 +32,14 @@ const foodSlot = 1;
 // (number from 1 to 9)
 const cropSlot = 5;
 
+// If true, when collecting the last items at the end of each floor,
+// the player will sprint jump. If false, it will not jump and only sprint.
+// Only enable this if your farm has a ceiling
+// that prevents the player from jumping high.
+const sprintJumpToCollect = true;
+
 // The number of floors your farm has
-const numberOfFloors = 10;
+const numberOfFloors = 26;
 
 // The y level of the farm's topmost floor
 // (if only one floor, put your farm's y level here)
@@ -59,7 +65,7 @@ const depositCoords = [-3492, -3504, -3516, -3528, -3540, -3552];
 util.setMainLoop(mainLoop);
 
 // The direction the bot walks in: true is north, false is south
-directionNorth = Math.abs(xMin - Math.floor(util.player.getX())) % 2 == 1;
+directionNorth = Math.abs(xMax - Math.floor(util.player.getX())) % 2 == 0;
 
 currentLayer = util.getCurrentFloor(yFloor1, yFloorStep, numberOfFloors, true);
 
@@ -70,6 +76,9 @@ botMode = util.isOnBlock(xMax, zMax) ? "startOfFloorA" : "main";
 util.startMainLoop();
 
 function mainLoop() {
+  // Prevents bug with autoreconnect
+  util.player = Player.getPlayer();
+
   if (botMode == "main") {
     mainMode();
   } else if (botMode == "startOfFloorA") {
@@ -105,12 +114,12 @@ function mainMode() {
   // Reached the end of a row? Move forward a block and change direction
   if (playerZ == zMax && !directionNorth) {
     KeyBind.keyBind("key.use", true);
-    util.moveTo([], playerX - 1.0 + 0.5, playerZ + 0.5);
+    util.moveTo([], playerX - 1.0 + 0.5, playerZ + 0.5, 0.15);
     directionNorth = true;
   }
   if (playerZ == zMin && directionNorth) {
     KeyBind.keyBind("key.use", true);
-    util.moveTo([], playerX - 1.0 + 0.5, playerZ + 0.5);
+    util.moveTo([], playerX - 1.0 + 0.5, playerZ + 0.5, 0.15);
     directionNorth = false;
   }
 
@@ -118,6 +127,17 @@ function mainMode() {
   util.player.lookAt(90, 22);
   KeyBind.keyBind("key.use", true);
   Client.waitTick();
+
+  // Dirt detection: leave a message in the logs when dirt is detected
+  playerY = Math.round(util.player.getY());
+  if (
+    Math.abs(util.player.getY() - playerY) < 0.01 &&
+    Math.abs(playerX - xMax) % 3 != 1
+  ) {
+    util.botLog(
+      "Dirt detected at x=" + playerX + " y=" + playerY + " z=" + playerZ,
+    );
+  }
 
   KeyBind.keyBind("key.use", false);
   KeyBind.keyBind("key.right", directionNorth);
@@ -215,7 +235,7 @@ function nearEndMode() {
   util.eatCheck(foodSlot);
   KeyBind.keyBind("key.forward", true);
   util.player.lookAt(directionNorth ? 180 : 0, 0);
-  util.sprint(true);
+  util.sprint(sprintJumpToCollect);
 }
 
 // The bot goes back to the start and goes to the next floor (if applicable)
@@ -223,18 +243,55 @@ function returnMode() {
   KeyBind.keyBind("key.right", false);
   KeyBind.keyBind("key.left", false);
   KeyBind.keyBind("key.forward", false);
+  KeyBind.keyBind("key.back", false);
 
-  // Go to the corner (aligned with lodestone)
-  util.eatCheck(foodSlot);
-  util.player.lookAt(xMax + 0.5, util.player.getY(), zMax - 1.0 + 0.5);
-  util.moveTo(["key.sprint", "key.jump"], xMax + 0.5, zMax - 1.0 + 0.5, 0.2);
-  if (util.isTerminated) {
+  playerX = Math.floor(util.player.getX());
+  playerZ = Math.floor(util.player.getZ());
+  if (!World.isWorldLoaded()) {
+    return;
+  }
+
+  // We may skip this step for the edge case where
+  // the player gets disconnected during the procedure
+  if (playerX < xMax) {
+    util.botLog("Step 1");
+    // Go to the corner, in a straight line
+    util.eatCheck(foodSlot);
+    util.player.lookAt(xMax + 0.5, util.player.getY(), zMax + 0.5);
+    util.moveTo(["key.sprint", "key.jump"], xMax + 0.5, zMax + 0.5);
+    if (util.isTerminated) {
+      return;
+    }
+  }
+
+  playerX = Math.floor(util.player.getX());
+  playerZ = Math.floor(util.player.getZ());
+  if (!World.isWorldLoaded()) {
+    return;
+  }
+
+  // Again, skip for edge case of disconnection
+  if (playerX == xMax && playerZ != zMax - 1) {
+    util.botLog("Step 2");
+    // Align yourself with the lodestone
+    util.moveTo([], xMax + 0.5, zMax - 1.0 + 0.5);
+    if (util.isTerminated) {
+      return;
+    }
+  }
+
+  if (!World.isWorldLoaded()) {
     return;
   }
 
   // Go on the lodestone
+  util.botLog("Step 3");
   util.moveTo([], xMax + 2.0 + 0.5, zMax - 1.0 + 0.5);
   if (util.isTerminated) {
+    return;
+  }
+
+  if (!World.isWorldLoaded()) {
     return;
   }
 
@@ -245,8 +302,9 @@ function returnMode() {
   }
 
   // Go down the lodestone
+  util.botLog("Step 4");
   recursionCounter = 0;
-  while (!util.isTerminated) {
+  while (util.isTerminated == false && World.isWorldLoaded()) {
     KeyBind.keyBind("key.sneak", true);
     Client.waitTick();
     KeyBind.keyBind("key.sneak", false);
@@ -260,7 +318,7 @@ function returnMode() {
       numberOfFloors,
       true,
     );
-    if (util.isTerminated) {
+    if (util.isTerminated == true) {
       break;
     }
 
@@ -269,13 +327,13 @@ function returnMode() {
 
       // Go on the farm in a straight line
       util.moveTo([], xMax + 0.5, zMax - 1.0 + 0.5);
-      if (util.isTerminated) {
+      if (util.isTerminated == true) {
         return;
       }
 
       // Go in the corner of the farm
       util.moveTo([], xMax + 0.5, zMax + 0.5);
-      if (util.isTerminated) {
+      if (util.isTerminated == true) {
         return;
       }
 

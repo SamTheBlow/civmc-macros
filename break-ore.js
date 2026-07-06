@@ -7,7 +7,8 @@
 // Feel free to change the key to manually stop the bot.
 const abortKey = "tab"
 
-// "pickaxe" = break ores with pickaxe, "axe" = break melons into slices with axe
+// "pickaxe" = break ores with pickaxe
+// "axe" = break melons into slices with axe
 const mode = "pickaxe"
 
 
@@ -48,7 +49,7 @@ function grabOre() {
 }
 
 function placeOre() {
-    p.lookAt(0,55)
+    p.lookAt(0,50)
     Client.waitTick()
     p.interact()
     Client.waitTick()
@@ -64,7 +65,7 @@ function grabPick() {
 }
 
 function breakOre() {
-    p.lookAt(0,60)
+    p.lookAt(0,50)
     Client.waitTick()
     KeyBind.keyBind("key.attack", true)
     if (mode == "axe"){

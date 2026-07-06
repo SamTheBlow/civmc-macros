@@ -5,22 +5,31 @@ const DESTS = [
   { title: "(Reset)", command: "" },
   { title: "Fairhill", command: "! twilight fairhill" },
   { title: "Icenia", command: "! icenia" },
-  { title: "Sarlacc", command: "! cw portal" },
+  { title: "Nether", command: "! cw portal" },
   { title: "Wholefoods", command: "! wf" },
+  { title: "Cane Corp", command: "cane-corp" },
 ];
 const BOTS = [
-  { file: "wheat.js", title: "WheatBot" },
-  { file: "turboclick.js", title: "TurboClickBot" },
-  { file: "spidereye.js", title: "SpiderEyeBot" },
-  { file: "enchant.js", title: "EnchantBot" },
-  { file: "autobottle.js", title: "AutoBottleBot" },
-  { file: "planter.js", title: "PlanterBot" },
+  { file: "wheat.js", title: "Wheat" },
+  { file: "beetroot.js", title: "Benelux Beet" },
+  { file: "spidereye.js", title: "Spider Eye" },
+  { file: "tree-canecorp.js", title: "CaneCorp Tree" },
+  { file: "turboclick.js", title: "TurboClick" },
+  { file: "enchant.js", title: "Enchant" },
+  { file: "autobottle.js", title: "AutoBottle" },
+  { file: "planter.js", title: "Plant Seeds" },
 ];
 const COMMANDS = [
   {
     title: "Toggle CTI",
     command: function () {
       Chat.say("/cti");
+    },
+  },
+  {
+    title: "six sevennn",
+    command: function () {
+      Chat.say("/groupc sixseven 67");
     },
   },
 ];

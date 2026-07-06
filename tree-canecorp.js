@@ -1,6 +1,6 @@
 /*
 
-This bot is designed to run on Pomerium's jungle tree farm.
+This bot is designed to run on Cane Corp's jungle tree farm.
 
 You need:
 - Diamond Axe with E4U3
@@ -10,7 +10,6 @@ You need:
 
 Start anywhere on the farm.
 Feel free to stop the bot and let it resume at any time.
-It will chop west to east, then south to north.
 Hold the abort key to terminate.
 
 */
@@ -23,6 +22,8 @@ const util = require("./blow-utils.js");
 // Here you can change the abort key (default is Tab)
 util.setAbortKey("tab");
 
+util.setAutoReconnect(true);
+
 // If true, the bot will automatically disconnect whenever it stops running.
 util.setDisconnectWhenDone(true);
 
@@ -34,10 +35,14 @@ util.setGoAfk(true);
 util.setDisableBypass(true);
 
 // The bot's name will be used in chat logs.
-util.setBotName("PomeriumJungleTreeBot");
+util.setBotName("CaneCorpTreeBot");
+
+// Set this to true if you want to chop from west to east,
+// or set it to false to chop from east to west
+const xDirection = false;
 
 // The y level of the farm's bottommost floor
-const yFloor1 = 96;
+const yFloor1 = 124;
 
 // The number of blocks between each floor
 // (e.g. if floor 1 is at y=67 and floor 2 is at y=70, then it's 3)
@@ -47,16 +52,16 @@ const yFloorStep = 10;
 const numberOfFloors = 1;
 
 // The coordinates where the first and last saplings are located
-const minX = -8419;
-const maxX = -8294;
-const minZ = 151;
-const maxZ = 216;
+const minX = -3452;
+const maxX = -3317;
+const minZ = -824;
+const maxZ = -654;
 
 // The number of blocks to get from one tree row to the next
 const distanceBetweenRows = 5;
 
 // Set this to false if you're not using shears (not recommended)
-const hasShears = false;
+const hasShears = true;
 
 // The slot in your hotbar where the food will be (number from 1 to 9)
 const foodSlot = 1;
@@ -75,17 +80,17 @@ const minimumToolDura = 10;
 
 // Change this depending on how fast your axe is
 // Recommended values: 2000 for Diamond E4, 1800 for Diamond E5
-const chopTime = 2000;
+const chopTime = 2400;
 
 // The coordinates of the lodestone where the bot can move between floors
-const lodestoneX = minX;
-const lodestoneZ = maxZ + 4;
+const lodestoneX = maxX + distanceBetweenRows;
+const lodestoneZ = minZ;
 
 // The coordinates of the (single) chest containing saplings.
 // The bot will restock on saplings at the start of each floor.
 // This chest must be reachable from the lodestone's position.
-const saplingChestX = lodestoneX;
-const saplingChestZ = lodestoneZ + 1;
+const saplingChestX = lodestoneX + 1;
+const saplingChestZ = lodestoneZ;
 
 // --- End of things you can configure
 // Don't touch anything below
@@ -93,7 +98,7 @@ const saplingChestZ = lodestoneZ + 1;
 const JUNGLE_SAP = "minecraft:jungle_sapling";
 
 botMode = "setup";
-direction = "east";
+direction = "south";
 
 currentFloor = util.getCurrentFloor(yFloor1, yFloorStep, numberOfFloors, false);
 
@@ -107,12 +112,15 @@ util.setMainLoop(mainLoop);
 util.startMainLoop();
 
 function mainLoop() {
+  playerX = Math.floor(util.player.getX());
+  playerZ = Math.floor(util.player.getZ());
+
   if (botMode == "setup") {
     botMode = "main";
     direction =
-      util.player.getYaw() >= 0 && util.player.getYaw() <= 180
-        ? "west"
-        : "east";
+      util.player.getYaw() >= -90 && util.player.getYaw() <= 90
+        ? "south"
+        : "north";
 
     // Make the bot restock on saplings if it starts at the start of the floor
     if (util.isOnBlock(lodestoneX, lodestoneZ)) {
@@ -120,29 +128,31 @@ function mainLoop() {
     }
 
     // Make the bot go to the next row if we're not on a row
-    flooredZ = Math.floor(util.player.getZ());
-    if (flooredZ > maxZ) {
-      nextRowPos = maxZ;
+    if (isBeforeStartOfFarm(playerX)) {
+      nextRowPos = getStartOfFarm();
       botMode = "toNextRow";
-      direction = "north";
-    } else if ((maxZ - flooredZ) % distanceBetweenRows != 0) {
-      nextRowPos =
-        flooredZ -
-        ((maxZ - flooredZ) % distanceBetweenRows) +
-        distanceBetweenRows;
+      direction = getXDirectionString();
+    } else if (
+      Math.abs(playerX - getStartOfFarm()) % distanceBetweenRows !=
+      0
+    ) {
+      nextRowPos = getNextRowPos(playerX);
       botMode = "toNextRow";
-      direction = "north";
+      direction = getXDirectionString();
     }
   } else if (botMode == "main" || botMode == "toNextRow") {
     util.eatCheck(foodSlot);
 
     // Walk forward while using your tool
     util.lookAt(dirAngle(), 0);
-    if (hasShears && shearsTime < 2) {
+    if (hasShears && shearsTime < 3) {
       util.grabShears(shearsSlot);
-      shearsTime++;
     } else {
       util.grabAxe(axeSlot, minimumToolDura);
+    }
+    shearsTime++;
+    if (shearsTime >= 10) {
+      shearsTime = 0;
     }
     if (util.isTerminated) {
       return;
@@ -150,38 +160,46 @@ function mainLoop() {
     KeyBind.keyBind("key.forward", true);
     KeyBind.keyBind("key.attack", true);
 
-    if (!util.isMoving()) {
+    if (isInFrontOfTree(playerX, playerZ) && !util.isMoving()) {
       chop();
-      shearTime = 0;
+      shearsTime = 0;
     }
+    // Code to automatically plant saplings on the whole farm
+    /* else if (
+      shearsTime > 5 &&
+      Math.abs(playerZ - minZ) % distanceBetweenRows == 0
+    ) {
+      util.moveTo([], playerX + 0.5, playerZ + 0.5);
+      plantSapling();
+      shearsTime = 0;
+      } */
 
     if (botMode == "main") {
       checkRowEnd();
-    } else if (
-      botMode == "toNextRow" &&
-      Math.floor(util.player.getZ()) <= nextRowPos
-    ) {
+    } else if (botMode == "toNextRow" && hasReachedNextRow(playerX)) {
       KeyBind.keyBind("key.forward", false);
-      centerBot();
+
+      // Center yourself properly
+      util.moveTo([], nextRowPos + 0.5, playerZ + 0.5);
+
       botMode = "main";
       setMainDirection();
-      util.botLog(direction);
       shearsTime = 0;
     }
   } else if (botMode == "toNextFloor") {
     util.lookAt(dirAngle(), 0);
+
+    // Walk forward and sprint jump
+    KeyBind.keyBind("key.forward", true);
+    util.sprint(Math.abs(playerX - lodestoneX) > 5);
 
     // Edge case where a tree grew in your way
     if (!util.isMoving()) {
       chop();
     }
 
-    // Walk forward and sprint jump
-    KeyBind.keyBind("key.forward", true);
-    util.sprint(util.player.getZ() < lodestoneZ - 5);
-
     // Once you reach the lodestone...
-    if (util.player.getZ() >= lodestoneZ - 1) {
+    if (hasReachedLodestone(playerX)) {
       KeyBind.keyBind("key.forward", false);
       jumpToNextFloor();
     }
@@ -197,10 +215,13 @@ function checkFell() {
 }
 
 function checkRowEnd() {
-  if (direction == "west" && Math.floor(util.player.getX()) > minX) {
+  playerX = Math.floor(util.player.getX());
+  playerZ = Math.floor(util.player.getZ());
+
+  if (direction == "north" && playerZ > minZ) {
     return;
   }
-  if (direction == "east" && Math.floor(util.player.getX()) < maxX) {
+  if (direction == "south" && playerZ < maxZ) {
     return;
   }
 
@@ -211,15 +232,15 @@ function checkRowEnd() {
   shearsTime = 0;
 
   // If we're at the end of the farm, go back to the first row
-  if (util.player.getZ() <= minZ) {
+  if (isAtEndOfFarm(playerX)) {
     botMode = "toNextFloor";
-    direction = "south";
+    direction = getXDirectionString(true);
   }
   // otherwise, move across the bridge to get to the next row
   else {
-    nextRowPos = Math.floor(util.player.getZ()) - distanceBetweenRows;
+    nextRowPos = getNextRowPos(playerX);
     botMode = "toNextRow";
-    direction = "north";
+    direction = getXDirectionString();
   }
 }
 
@@ -255,9 +276,12 @@ function chop() {
   centerBot();
 
   // Chop the log that's on the ground
-  KeyBind.keyBind("key.attack", true);
   util.lookAt(dirAngle() - 10, 40);
-  Client.waitTick(9);
+  // This wait time here is important otherwise sometimes the bot
+  // can swing the axe too early and ends up taking too long to break the log
+  Client.waitTick();
+  KeyBind.keyBind("key.attack", true);
+  Client.waitTick(10);
   util.lookAt(dirAngle(), 0);
 
   // Move to where the tree was
@@ -277,12 +301,15 @@ function chop() {
   }
   attemptwalk = 0;
   while (
-    ((direction == "south" && blockCenterPos[1] < feetGoalPos[1]) ||
-      (direction == "north" && blockCenterPos[1] > feetGoalPos[1]) ||
-      (direction == "east" && blockCenterPos[0] < feetGoalPos[0]) ||
-      (direction == "west" && blockCenterPos[0] > feetGoalPos[0])) &&
-    !util.isTerminated
+    (direction == "south" && blockCenterPos[1] < feetGoalPos[1]) ||
+    (direction == "north" && blockCenterPos[1] > feetGoalPos[1]) ||
+    (direction == "east" && blockCenterPos[0] < feetGoalPos[0]) ||
+    (direction == "west" && blockCenterPos[0] > feetGoalPos[0])
   ) {
+    if (util.isTerminated) {
+      return;
+    }
+
     KeyBind.keyBind("key.forward", true);
     Client.waitTick();
     blockCenterPos = [
@@ -303,18 +330,20 @@ function chop() {
   util.lookAt(dirAngle(), -90);
   Time.sleep(chopTime);
 
-  // Place a sapling
-  util.lookAt(dirAngle(), 90);
+  plantSapling();
+}
+
+// Places a sapling
+function plantSapling() {
   KeyBind.keyBind("key.attack", false);
+  util.lookAt(dirAngle(), 90);
   grabSapling();
-  util.player.interact();
   Client.waitTick();
-  util.player.interact();
-  Client.waitTick();
-  util.player.interact();
-  Client.waitTick();
-  util.player.interact();
+  KeyBind.keyBind("key.use", true);
+  Client.waitTick(3);
+  KeyBind.keyBind("key.use", false);
   util.lookAt(dirAngle(), 0);
+  Client.waitTick();
 }
 
 // Drops all relevant items into the water collection.
@@ -325,7 +354,7 @@ function dropWood() {
   angle = -(dirAngle() - 160);
   // Edge case: if we're on the last row of the farm,
   // drop items the other way instead
-  if (util.player.getZ() <= minZ) {
+  if (isAtEndOfFarm(Math.floor(util.player.getX()))) {
     angle = -angle;
   }
   util.lookAt(angle, 45);
@@ -356,23 +385,18 @@ function jumpToNextFloor() {
 
   restockSaplings();
 
-  nextRowPos = maxZ;
+  nextRowPos = getStartOfFarm();
 
   botMode = "toNextRow";
-  direction = "north";
+  direction = getXDirectionString();
   shearsTime = 0;
 }
 
 function setMainDirection() {
-  util.botLog(
-    Math.abs(util.player.getX() - minX) +
-      "; " +
-      Math.abs(util.player.getX() - maxX),
-  );
   direction =
-    Math.abs(util.player.getX() - minX) < Math.abs(util.player.getX() - maxX)
-      ? "east"
-      : "west";
+    Math.abs(util.player.getZ() - minZ) < Math.abs(util.player.getZ() - maxZ)
+      ? "south"
+      : "north";
 }
 
 function getCurrentY() {
@@ -382,8 +406,81 @@ function getCurrentY() {
 function restockSaplings() {
   util.openChest([saplingChestX, getCurrentY(), saplingChestZ]);
   util.withdrawAll([JUNGLE_SAP], false, false);
+
+  // Close inventory
+  inv = Player.openInventory();
+  inv.close();
+  Client.waitTick();
 }
 
 function grabSapling() {
   util.grabItem([JUNGLE_SAP], "saplings", saplingSlot);
+}
+
+function isBeforeStartOfFarm(playerX) {
+  return xDirection ? playerX < minX : playerX > maxX;
+}
+
+function isAtEndOfFarm(playerX) {
+  return xDirection ? playerX >= maxX : playerX <= minX;
+}
+
+function getStartOfFarm() {
+  return xDirection ? minX : maxX;
+}
+
+function getEndOfFarm() {
+  return xDirection ? maxX : minX;
+}
+
+// Returns "east" if going from west to east, otherwise "west".
+// The output is reversed if oppositeDirection is set to true
+function getXDirectionString(oppositeDirection = false) {
+  if (oppositeDirection) {
+    return xDirection ? "west" : "east";
+  }
+  return xDirection ? "east" : "west";
+}
+
+function getNextRowPos() {
+  return xDirection
+    ? playerX -
+        (Math.abs(playerX - minX) % distanceBetweenRows) +
+        distanceBetweenRows
+    : playerX +
+        (Math.abs(playerX - maxX) % distanceBetweenRows) -
+        distanceBetweenRows;
+}
+
+function hasReachedNextRow(playerX) {
+  return xDirection ? playerX >= nextRowPos : playerX <= nextRowPos;
+}
+
+function hasReachedLodestone(playerX) {
+  return xDirection ? playerX <= lodestoneX : playerX >= lodestoneX;
+}
+
+function isInFrontOfTree(playerX, playerZ) {
+  if (
+    direction == "north" &&
+    Math.abs(playerZ - minZ) % distanceBetweenRows == 1
+  ) {
+    return true;
+  } else if (
+    direction == "south" &&
+    Math.abs(playerZ - minZ) % distanceBetweenRows == distanceBetweenRows - 1
+  ) {
+    return true;
+  } else if (
+    direction == "west" &&
+    Math.abs(playerX - minX) % distanceBetweenRows == 1
+  ) {
+    return true;
+  } else if (
+    direction == "east" &&
+    Math.abs(playerX - minX) % distanceBetweenRows == distanceBetweenRows - 1
+  ) {
+    return true;
+  }
+  return false;
 }
