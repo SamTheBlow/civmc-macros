@@ -3,9 +3,9 @@
 This bot is designed to run on Cane Corp's jungle tree farm.
 
 You need:
-- Diamond Axe with E4U3
-- (?) Shears (optional but recommended)
-- (?) stacks of Jungle Sapling
+- 2 Diamond Axes with E4U3
+- 5 Shears (optional but recommended)
+- 16 stacks of Jungle Sapling
 - Sufficient Food
 
 Start anywhere on the farm.
@@ -193,15 +193,15 @@ function mainLoop() {
     KeyBind.keyBind("key.forward", true);
     util.sprint(Math.abs(playerX - lodestoneX) > 5);
 
-    // Edge case where a tree grew in your way
-    if (!util.isMoving()) {
-      chop();
-    }
-
     // Once you reach the lodestone...
     if (hasReachedLodestone(playerX)) {
       KeyBind.keyBind("key.forward", false);
       jumpToNextFloor();
+    }
+
+    // Edge case where a tree grew in your way
+    if (!isBeforeStartOfFarm(playerX) && !util.isMoving()) {
+      chop();
     }
   }
 

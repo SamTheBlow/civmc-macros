@@ -5,9 +5,9 @@ const DESTS = [
   { title: "(Reset)", command: "" },
   { title: "Fairhill", command: "! twilight fairhill" },
   { title: "Icenia", command: "! icenia" },
-  { title: "Nether", command: "! cw portal" },
+  { title: "Nether", command: "! portal" },
   { title: "Wholefoods", command: "! wf" },
-  { title: "Cane Corp", command: "cane-corp" },
+  { title: "Cane Corp", command: "greater cane-corp" },
 ];
 const BOTS = [
   { file: "wheat.js", title: "Wheat" },
