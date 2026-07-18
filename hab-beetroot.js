@@ -268,6 +268,12 @@ function returnMode() {
     checkDeposit(playerX, playerZ);
   }
 
+  playerX = Math.floor(util.player.getX());
+  playerZ = Math.floor(util.player.getZ());
+  if (!World.isWorldLoaded()) {
+    return;
+  }
+
   // Then go drop items in the other deposit
   if (playerX < Math.max(depositSeed, depositCrop)) {
     // Go to the deposit site, in a straight line
@@ -284,6 +290,12 @@ function returnMode() {
     checkDeposit(playerX, playerZ);
   }
 
+  playerX = Math.floor(util.player.getX());
+  playerZ = Math.floor(util.player.getZ());
+  if (!World.isWorldLoaded()) {
+    return;
+  }
+
   // Then go to the start of the farm in the corner
   if (playerX < xMax) {
     // Go to the corner, in a straight line
@@ -295,26 +307,12 @@ function returnMode() {
     }
   }
 
-  playerX = Math.floor(util.player.getX());
-  playerZ = Math.floor(util.player.getZ());
-  if (!World.isWorldLoaded()) {
-    return;
-  }
-
-  if (playerX == xMax && playerZ != zMax - 1) {
-    // Align yourself with the lodestone
-    util.moveTo([], xMax + 0.5, zMax - 1.0 + 0.5);
-    if (util.isTerminated) {
-      return;
-    }
-  }
-
   if (!World.isWorldLoaded()) {
     return;
   }
 
   // Go on the lodestone
-  util.moveTo([], xMax + 2.0 + 0.5, zMax - 1.0 + 0.5);
+  util.moveTo([], xMax + 0.5, zMax + 1.0 + 0.5);
   if (util.isTerminated) {
     return;
   }
@@ -351,12 +349,6 @@ function returnMode() {
 
     if (floorCheck != currentLayer) {
       currentLayer = floorCheck;
-
-      // Go on the farm in a straight line
-      util.moveTo([], xMax + 0.5, zMax - 1.0 + 0.5);
-      if (util.isTerminated == true) {
-        return;
-      }
 
       // Go in the corner of the farm
       util.moveTo([], xMax + 0.5, zMax + 0.5);
